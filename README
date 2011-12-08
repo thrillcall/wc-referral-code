@@ -1,0 +1,44 @@
+== Example on the usage of the ReferralCode gem
+
+# Instantiate the object
+# params: Redis instance
+rc = ReferralCode.new($redis)
+
+# Create a referral code for a user
+# Params: Person ID
+rc.create_person_code(1234)
+=> "OK"
+
+# Get the code of a person
+# Params: Person ID
+# Returns the ID of a person
+rc.get_person_code(1234)
+=> "abcde1"
+
+# Get the person ID related to a referral code
+# Params: Referral code
+# Return the person ID
+rc.get_person_with_code("abcde1")
+=> "1234"
+
+# Add a person to the list of persons who have used the same code
+# Params: Person ID of the user using the referral code
+#         Referral code
+rc.add_person_to_referral_list(9876,"abcde1")
+=> "OK"
+
+# Get the list of persons who have used a referral code
+# Params: Referral code
+rc.get_list_referral_code("abcde1")
+=> ["9876"]
+
+# Get the Person ID who the Referral code used belong to
+# Params: Person ID
+rc.get_referral_code_owner_used(9876)
+=> "1234"
+
+
+== TESTS
+To run the tests:
+bundle install
+bundle exec rake

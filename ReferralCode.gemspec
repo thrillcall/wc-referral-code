@@ -7,11 +7,16 @@ Gem::Specification.new do |s|
   s.version     = Referralcode::VERSION
   s.authors     = ["Eddy Kang"]
   s.email       = ["eddy@thrillcall.com"]
-  s.homepage    = ""
-  s.summary     = %q{TODO: Write a gem summary}
-  s.description = %q{TODO: Write a gem description}
+  s.homepage    = "https://github.com/thrillcall/wc-referral-code"
+  s.summary     = %q{Wrapper to access referral codes for users stored in redis.}
+  s.description = %q{Wrapper to access referral codes for users stored in redis.}
 
   s.rubyforge_project = "ReferralCode"
+
+  s.add_development_dependency  "redis", "2.2.2"
+  s.add_development_dependency  "redis-namespace", "1.0.3"
+  s.add_development_dependency  "uuidtools", "2.1.2"
+  s.add_development_dependency  "rake"
 
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
