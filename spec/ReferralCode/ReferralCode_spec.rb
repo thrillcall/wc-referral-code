@@ -2,14 +2,13 @@
 require File.expand_path("../../spec_helper", __FILE__)
 require "ReferralCode"
 
-PERSON_ID = "1"
-USER_ID = "2"
-
 describe "ReferralCodeTest" do
 
   before do
     $redis.flushdb
     @rc = ReferralCode.new($redis)
+    @person_id  = rand(10000000).to_s
+    @user_id    = rand(10000000).to_s
   end
 
   it "should have a clean redis database" do
@@ -25,62 +24,75 @@ describe "ReferralCodeTest" do
   end
 
   it "should create a referral code" do
-    @rc.create_person_code(PERSON_ID).must_equal("OK")
+    @rc.create_person_code(@person_id).wont_be_empty
   end
 
-  it "should not create a referral code for a person who has already one" do
-    @rc.create_person_code(PERSON_ID)
-    @rc.create_person_code(PERSON_ID).must_be_nil
+  it "should not create a new referral code for a person who has already one" do
+    code  = @rc.create_person_code(@person_id)
+    new_c = @rc.create_person_code(@person_id).must_equal(code)
   end
 
   it "should create the reverse lookup for the referral code" do
-    @rc.create_person_code(PERSON_ID)
-    code = @rc.get_person_code(PERSON_ID)
-    @rc.get_person_with_code(code).must_equal(PERSON_ID)
+    code = @rc.create_person_code(@person_id)
+    @rc.get_person_with_code(code).must_equal(@person_id)
   end
 
   it "should retrieve the referral code of a person" do
-    @rc.create_person_code(PERSON_ID)
-    @rc.get_person_code(PERSON_ID).wont_be_empty
+    code  = @rc.create_person_code(@person_id)
+    new_c = @rc.get_person_code(@person_id)
+    new_c.wont_be_empty
+    new_c.must_equal(code)
   end
 
   it "should retrieve the ID of a person with the referral code" do
-    @rc.create_person_code(PERSON_ID)
-    code = @rc.get_person_code(PERSON_ID)
-    @rc.get_person_with_code(code).must_equal(PERSON_ID)
+    code = @rc.create_person_code(@person_id)
+    @rc.get_person_with_code(code).must_equal(@person_id)
   end
 
   it "should add a person to the list of persons who have used the same referral code" do
-    @rc.create_person_code(PERSON_ID)
-    code = @rc.get_person_code(PERSON_ID)
-    @rc.add_person_to_referral_list(USER_ID, code).must_equal("OK")
+    code = @rc.create_person_code(@person_id)
+    @rc.add_person_to_referral_list(@user_id, code).must_equal(true)
   end
 
   it "should not add the person to the list if he is the owner of the referral code" do
-    @rc.create_person_code(PERSON_ID)
-    code = @rc.get_person_code(PERSON_ID)
-    @rc.add_person_to_referral_list(PERSON_ID, code).must_be_nil
-  end
-
-  it "should create the reverse lookup to determine who is the owner of the referral code the user has used" do
-    @rc.create_person_code(PERSON_ID)
-    code = @rc.get_person_code(PERSON_ID)
-    @rc.add_person_to_referral_list(USER_ID, code)
-    @rc.set_referral_code_owner_used(PERSON_ID, USER_ID).must_equal("OK")
+    code = @rc.create_person_code(@person_id)
+    @rc.add_person_to_referral_list(@person_id, code).must_equal(false)
   end
 
   it "should get the list of persons who have used a referral code" do
-    @rc.create_person_code(PERSON_ID)
-    code = @rc.get_person_code(PERSON_ID)
-    @rc.add_person_to_referral_list(USER_ID, code)
+    code = @rc.create_person_code(@person_id)
+    @rc.add_person_to_referral_list(@user_id, code)
     @rc.get_list_referral_code(code).size.must_equal(1)
   end
 
-  it "should get the owner of the referral code a person has used" do
-    @rc.create_person_code(PERSON_ID)
-    code = @rc.get_person_code(PERSON_ID)
-    @rc.add_person_to_referral_list(USER_ID, code)
-    @rc.get_referral_code_owner_used(USER_ID).must_equal(PERSON_ID)
+  it "should set up a reciprocal referral" do
+    first_code  = @rc.create_person_code(@person_id)
+    second_code = @rc.create_person_code(@user_id)
+    first_code.wont_equal(second_code)
+    @rc.associate_codes(first_code, second_code).must_equal(true)
+    @rc.get_list_referral_code(first_code).size.must_equal(1)
+    @rc.get_list_referral_code(first_code).first.must_equal(@user_id)
+    @rc.get_list_referral_code(second_code).size.must_equal(1)
+    @rc.get_list_referral_code(second_code).first.must_equal(@person_id)
+  end
+
+  it "should not set up reciprocal referral if given the same codes" do
+    first_code  = @rc.create_person_code(@person_id)
+    second_code = first_code
+    @rc.associate_codes(first_code, second_code).must_equal(false)
+    @rc.get_list_referral_code(first_code).size.must_equal(0)
+  end
+
+  it "should not set up reciprocal referral if given invalid arguments" do
+    first_code  = @rc.create_person_code(@person_id)
+    second_code = @rc.create_person_code(@user_id)
+
+    @rc.associate_codes(first_code, nil).must_equal(false)
+    @rc.get_list_referral_code(first_code).size.must_equal(0)
+
+    @rc.associate_codes(first_code, second_code.reverse).must_equal(false)
+    @rc.get_list_referral_code(first_code).size.must_equal(0)
+    @rc.get_list_referral_code(second_code).size.must_equal(0)
   end
 
 end
