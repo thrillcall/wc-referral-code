@@ -62,9 +62,19 @@ class ReferralCode
   ################################################################
   # Associate two owners to each other through their referral codes
   ################################################################
+  def associate_people(first_owner, second_owner)
+    first_code    = get_person_code(first_owner)
+    second_code   = get_person_code(second_owner)
+    do_association(first_code, first_owner, second_code, second_owner)
+  end
+
   def associate_codes(first_code, second_code)
     first_owner   = get_person_with_code(first_code)
     second_owner  = get_person_with_code(second_code)
+    do_association(first_code, first_owner, second_code, second_owner)
+  end
+
+  def do_association(first_code, first_owner, second_code, second_owner)
     if first_code && second_code && first_owner && second_owner && (first_owner != second_owner)
       @redis.sadd list_referral_code_key(first_code),   second_owner
       @redis.sadd list_referral_code_key(second_code),  first_owner
@@ -77,9 +87,35 @@ class ReferralCode
 
   ################################################################
   # Retrieve the list of persons who have used a specific referral code
-  #################################################################
+  ################################################################
   def get_list_referral_code(code)
     @redis.smembers list_referral_code_key(code)
+  end
+  ################################################################
+
+  ################################################################
+  # Get and set bonus points
+  #################################################################
+  def get_bonus_points(code)
+    ((@redis.get code_bonus_key(code)) || 0).to_i
+  end
+
+  def add_bonus_points(code, amt = 0)
+    amt = amt.to_i + get_bonus_points(code)
+    @redis.set code_bonus_key(code), amt
+  end
+  ################################################################
+
+  ################################################################
+  # Add the length of the code's referral list to the code's bonus points
+  ################################################################
+  def get_referral_points(code)
+    list  = get_list_referral_code(code)
+    bonus = get_bonus_points(code)
+
+    list  = list  ? list.length : 0
+    bonus = bonus ? bonus : 0
+    return (list + bonus)
   end
   ################################################################
 
@@ -96,6 +132,10 @@ class ReferralCode
   # Key where are stored the users who used someone's code (Referral)
   def list_referral_code_key(code)
     "offers:list:referral:code:#{code}"
+  end
+
+  def code_bonus_key(code)
+    "offers:code:bonus:#{code}"
   end
 
 end
