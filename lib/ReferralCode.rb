@@ -104,6 +104,11 @@ class ReferralCode
     amt = amt.to_i + get_bonus_points(code)
     @redis.set code_bonus_key(code), amt
   end
+
+  def add_bonus_points_id(id, amt = 0)
+    c = get_person_code(id)
+    add_bonus_points(c, amt)
+  end
   ################################################################
 
   ################################################################
@@ -116,6 +121,11 @@ class ReferralCode
     list  = list  ? list.length : 0
     bonus = bonus ? bonus : 0
     return (list + bonus)
+  end
+
+  def get_referral_points_id(id)
+    c = get_person_code(id)
+    get_referral_points(c)
   end
   ################################################################
 

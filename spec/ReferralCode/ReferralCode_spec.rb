@@ -151,5 +151,22 @@ describe "ReferralCodeTest" do
     @rc.get_referral_points(first_code).must_equal(c + 1)
   end
 
+  it "should find a code when given an ID for the get_referral_points_id wrapper" do
+    c = rand(200) - 100
+    code = @rc.create_person_code(@person_id)
+    @rc.get_bonus_points(code).must_equal(0)
+    @rc.add_bonus_points_id(@person_id, c)
+    @rc.get_bonus_points(code).must_equal(c)
+  end
+
+  it "should find a code when given an ID for the add_bonus_points_id wrapper" do
+    first_code  = @rc.create_person_code(@person_id)
+    second_code = @rc.create_person_code(@user_id)
+    @rc.associate_people(@person_id, @user_id).must_equal(true)
+    @rc.get_list_referral_code(first_code).size.must_equal(1)
+    @rc.get_list_referral_code(first_code).first.must_equal(@user_id)
+    @rc.get_referral_points_id(@person_id).must_equal(1)
+  end
+
 end
 
