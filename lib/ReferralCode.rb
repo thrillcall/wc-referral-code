@@ -107,6 +107,9 @@ class ReferralCode
 
   def add_bonus_points_id(id, amt = 0)
     c = get_person_code(id)
+    unless c
+      return false
+    end
     add_bonus_points(c, amt)
   end
   ################################################################
@@ -125,6 +128,9 @@ class ReferralCode
 
   def get_referral_points_id(id)
     c = get_person_code(id)
+    unless c
+      return false
+    end
     get_referral_points(c)
   end
   ################################################################
