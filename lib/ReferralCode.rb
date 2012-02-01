@@ -25,7 +25,8 @@ class ReferralCode
 
   # Method creating the reverse lookup between a user and a referral code
   def set_code_list(person_id, code)
-    @redis.set code_person_key(code), person_id
+    p_id = person_id.to_i
+    @redis.set code_person_key(code), p_id
   end
   ################################################################
 
@@ -33,7 +34,8 @@ class ReferralCode
   # Retrieve the referral code for a person
   ################################################################
   def get_person_code(person_id)
-    @redis.get person_code_key(person_id)
+    p_id = person_id.to_i
+    @redis.get person_code_key(p_id)
   end
   ################################################################
 
@@ -41,7 +43,11 @@ class ReferralCode
   # Retrieve the person ID associated with the referral code
   ################################################################
   def get_person_with_code(code)
-    @redis.get code_person_key(code)
+    id = @redis.get code_person_key(code)
+    if id
+      id = id.to_i
+    end
+    id
   end
   ################################################################
 
@@ -49,9 +55,10 @@ class ReferralCode
   # Add a person to a set where the set contains all the persons using the same referral code
   ################################################################
   def add_person_to_referral_list(person_id, code)
+    p_id = person_id.to_i
     owner_code_id = get_person_with_code(code)
-    if owner_code_id != person_id.to_s
-      @redis.sadd list_referral_code_key(code), person_id
+    if owner_code_id != p_id
+      @redis.sadd list_referral_code_key(code), p_id
       #set_referral_code_owner_used(owner_code_id, person_id)
       return true
     end
@@ -89,51 +96,83 @@ class ReferralCode
   # Retrieve the list of persons who have used a specific referral code
   ################################################################
   def get_list_referral_code(code)
-    @redis.smembers list_referral_code_key(code)
+    m = @redis.smembers list_referral_code_key(code)
+    if m
+      m.collect! do |id|
+        id = id.to_i
+      end
+    end
+    m
   end
   ################################################################
 
   ################################################################
-  # Get and set bonus points
+  # Get and set bonus credits
   #################################################################
-  def get_bonus_points(code)
+  def get_bonus_credits(code)
     ((@redis.get code_bonus_key(code)) || 0).to_i
   end
 
-  def add_bonus_points(code, amt = 0)
-    amt = amt.to_i + get_bonus_points(code)
+  def add_bonus_credits(code, amt = 0)
+    amt = amt.to_i + get_bonus_credits(code)
     @redis.set code_bonus_key(code), amt
   end
 
-  def add_bonus_points_id(id, amt = 0)
+  def add_bonus_credits_id(id, amt = 0)
     c = get_person_code(id)
     unless c
       return false
     end
-    add_bonus_points(c, amt)
+    add_bonus_credits(c, amt)
   end
   ################################################################
 
   ################################################################
-  # Add the length of the code's referral list to the code's bonus points
+  # Add the length of the code's referral list to the code's bonus credits
   ################################################################
-  def get_referral_points(code)
+  def get_referral_credits(code)
     list  = get_list_referral_code(code)
-    bonus = get_bonus_points(code)
+    bonus = get_bonus_credits(code)
 
     list  = list  ? list.length : 0
     bonus = bonus ? bonus : 0
     return (list + bonus)
   end
 
-  def get_referral_points_id(id)
+  def get_referral_credits_id(id)
     c = get_person_code(id)
     unless c
       return false
     end
-    get_referral_points(c)
+    get_referral_credits(c)
   end
   ################################################################
+
+  def get_high_credit_users(min_credits = 0)
+    list = []
+
+    all_code_keys = @redis.keys(code_person_key("*"))
+    all_code_keys.each do |k|
+      code = k.gsub(code_person_key(""), "")
+      item          = {
+        :code           => code,
+        :tc_uid         => get_person_with_code(code),
+        :referrals      => get_list_referral_code(code),
+        :bonus_credits  => get_bonus_credits(code)
+      }
+
+      item[:referral_credits] = item[:referrals].length
+      item[:total_credits]    = item[:referral_credits] + item[:bonus_credits]
+
+      if item[:total_credits] >= min_credits
+        list << item
+      end
+    end
+    list.sort! do |a, b|
+      b[:total_credits] <=> a[:total_credits]
+    end
+    return list
+  end
 
   # Key where each user has one code associated with his ID
   def person_code_key(person_id)

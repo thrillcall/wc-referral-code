@@ -7,8 +7,8 @@ describe "ReferralCodeTest" do
   before do
     $redis.flushdb
     @rc = ReferralCode.new($redis)
-    @person_id  = rand(10000000).to_s
-    @user_id    = rand(10000000).to_s
+    @person_id  = rand(10000000)
+    @user_id    = rand(10000000)
   end
 
   it "should have a clean redis database" do
@@ -105,76 +105,121 @@ describe "ReferralCodeTest" do
     @rc.get_list_referral_code(second_code).first.must_equal(@person_id)
   end
 
-  it "should return an integer for the amount of bonus points for a new code" do
+  it "should return an integer for the amount of bonus credits for a new code" do
     code = @rc.create_person_code(@person_id)
-    @rc.get_bonus_points(code).must_equal(0)
+    @rc.get_bonus_credits(code).must_equal(0)
   end
 
-  it "should return the same number for get_list_referral_code and get_referral_points if the code has no bonus" do
+  it "should return the same number for get_list_referral_code and get_referral_credits if the code has no bonus" do
     first_code  = @rc.create_person_code(@person_id)
     second_code = @rc.create_person_code(@user_id)
     @rc.associate_people(@person_id, @user_id).must_equal(true)
     @rc.get_list_referral_code(first_code).size.must_equal(1)
     @rc.get_list_referral_code(first_code).first.must_equal(@user_id)
-    @rc.get_referral_points(first_code).must_equal(1)
+    @rc.get_referral_credits(first_code).must_equal(1)
   end
 
-  it "should be able to add an arbitrary number to bonus points" do
+  it "should be able to add an arbitrary number to bonus credits" do
     c = rand(200) - 100
     code = @rc.create_person_code(@person_id)
-    @rc.get_bonus_points(code).must_equal(0)
-    @rc.add_bonus_points(code, c)
-    @rc.get_bonus_points(code).must_equal(c)
+    @rc.get_bonus_credits(code).must_equal(0)
+    @rc.add_bonus_credits(code, c)
+    @rc.get_bonus_credits(code).must_equal(c)
   end
 
-  it "should be able to decrement bonus points" do
+  it "should be able to decrement bonus credits" do
     code = @rc.create_person_code(@person_id)
-    @rc.get_bonus_points(code).must_equal(0)
-    @rc.add_bonus_points(code, 5)
-    @rc.get_bonus_points(code).must_equal(5)
-    @rc.add_bonus_points(code, -1)
-    @rc.get_bonus_points(code).must_equal(4)
+    @rc.get_bonus_credits(code).must_equal(0)
+    @rc.add_bonus_credits(code, 5)
+    @rc.get_bonus_credits(code).must_equal(5)
+    @rc.add_bonus_credits(code, -1)
+    @rc.get_bonus_credits(code).must_equal(4)
   end
 
-  it "should return bonus points included in get_referral_points" do
+  it "should return bonus credits included in get_referral_credits" do
     first_code  = @rc.create_person_code(@person_id)
     second_code = @rc.create_person_code(@user_id)
     @rc.associate_people(@person_id, @user_id).must_equal(true)
     @rc.get_list_referral_code(first_code).size.must_equal(1)
     @rc.get_list_referral_code(first_code).first.must_equal(@user_id)
-    @rc.get_referral_points(first_code).must_equal(1)
+    @rc.get_referral_credits(first_code).must_equal(1)
 
     c = rand(200) - 100
-    @rc.get_bonus_points(first_code).must_equal(0)
-    @rc.add_bonus_points(first_code, c)
-    @rc.get_bonus_points(first_code).must_equal(c)
-    @rc.get_referral_points(first_code).must_equal(c + 1)
+    @rc.get_bonus_credits(first_code).must_equal(0)
+    @rc.add_bonus_credits(first_code, c)
+    @rc.get_bonus_credits(first_code).must_equal(c)
+    @rc.get_referral_credits(first_code).must_equal(c + 1)
   end
 
-  it "should return false if it can't find a code for a given ID in the get_referral_points_id wrapper" do
-    @rc.add_bonus_points_id(@person_id, 4).must_equal(false)
+  it "should return false if it can't find a code for a given ID in the get_referral_credits_id wrapper" do
+    @rc.add_bonus_credits_id(@person_id, 4).must_equal(false)
   end
 
-  it "should find a code when given an ID for the get_referral_points_id wrapper" do
+  it "should find a code when given an ID for the get_referral_credits_id wrapper" do
     c = rand(200) - 100
     code = @rc.create_person_code(@person_id)
-    @rc.get_bonus_points(code).must_equal(0)
-    @rc.add_bonus_points_id(@person_id, c).must_equal("OK")
-    @rc.get_bonus_points(code).must_equal(c)
+    @rc.get_bonus_credits(code).must_equal(0)
+    @rc.add_bonus_credits_id(@person_id, c).must_equal("OK")
+    @rc.get_bonus_credits(code).must_equal(c)
   end
 
-  it "should return false if it can't find a code for a given ID in the add_bonus_points_id wrapper" do
-    @rc.get_referral_points_id(@person_id).must_equal(false)
+  it "should return false if it can't find a code for a given ID in the add_bonus_credits_id wrapper" do
+    @rc.get_referral_credits_id(@person_id).must_equal(false)
   end
 
-  it "should find a code when given an ID for the add_bonus_points_id wrapper" do
+  it "should find a code when given an ID for the add_bonus_credits_id wrapper" do
     first_code  = @rc.create_person_code(@person_id)
     second_code = @rc.create_person_code(@user_id)
     @rc.associate_people(@person_id, @user_id).must_equal(true)
     @rc.get_list_referral_code(first_code).size.must_equal(1)
     @rc.get_list_referral_code(first_code).first.must_equal(@user_id)
-    @rc.get_referral_points_id(@person_id).must_equal(1)
+    @rc.get_referral_credits_id(@person_id).must_equal(1)
   end
 
+  it "should provide a list of all the users above a certain number of referral credits, ordered by credits descending" do
+    third_id    = rand(100000)
+    fourth_id   = rand(100000)
+    first_code  = @rc.create_person_code(@person_id)
+    second_code = @rc.create_person_code(@user_id)
+    third_code  = @rc.create_person_code(third_id)
+    fourth_code = @rc.create_person_code(fourth_id)
+
+    #ary = [[first_code, @person_id], [second_code, @user_id], [third_code, third_id], [fourth_code, fourth_id]]
+    #ary.each_index do |i|
+    #  puts "#{i}: code: #{ary[i][0]}, id: #{ary[i][1]}"
+    #end
+
+    @rc.associate_people(@person_id, @user_id).must_equal(true)
+    @rc.associate_people(@person_id, third_id).must_equal(true)
+    @rc.associate_people(@person_id, fourth_id).must_equal(true)
+    @rc.associate_people(third_id, @user_id).must_equal(true)
+
+    @rc.add_bonus_credits_id(@person_id, 1)
+    @rc.add_bonus_credits_id(@user_id, 1)
+
+    list = @rc.get_high_credit_users(3)
+    list.wont_be_empty
+    list.must_be_instance_of Array
+    list.length.must_equal(2)
+
+    list[0][:code].must_equal(first_code)
+    list[0][:tc_uid].must_equal(@person_id)
+    (list[0][:referrals].include? (@user_id)).must_equal(true)
+    (list[0][:referrals].include? (third_id)).must_equal(true)
+    (list[0][:referrals].include? (fourth_id)).must_equal(true)
+
+    list[0][:referral_credits].must_equal(list[0][:referrals].length)
+    list[0][:bonus_credits].must_equal(1)
+
+    list[0][:total_credits].must_equal(list[0][:referrals].length + 1)
+
+    list[1][:code].must_equal(second_code)
+    list[1][:tc_uid].must_equal(@user_id)
+    (list[1][:referrals].include? (@person_id)).must_equal(true)
+    (list[1][:referrals].include? (third_id)).must_equal(true)
+    list[1][:bonus_credits].must_equal(1)
+    list[1][:referral_credits].must_equal(2)
+    list[1][:total_credits].must_equal(3)
+  end
 end
 
