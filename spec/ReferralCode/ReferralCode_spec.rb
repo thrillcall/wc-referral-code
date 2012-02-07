@@ -76,6 +76,19 @@ describe "ReferralCodeTest" do
     @rc.get_list_referral_code(second_code).first.must_equal(@person_id)
   end
 
+  it "should add the codes involved in a reciprocal referral to the list of codes that have credits" do
+    first_code  = @rc.create_person_code(@person_id)
+    second_code = @rc.create_person_code(@user_id)
+    first_code.wont_equal(second_code)
+    @rc.associate_codes(first_code, second_code).must_equal(true)
+    list = @rc.get_codes_with_credits
+    list.wont_be_empty
+    list.must_be_instance_of Array
+    list.length.must_equal(2)
+    (list.include? first_code).must_equal(true)
+    (list.include? second_code).must_equal(true)
+  end
+
   it "should not set up reciprocal referral if given the same codes" do
     first_code  = @rc.create_person_code(@person_id)
     second_code = first_code
@@ -151,6 +164,17 @@ describe "ReferralCodeTest" do
     @rc.get_referral_credits(first_code).must_equal(c + 1)
   end
 
+  it "should add a code with bonus credits to the list of codes that have credits" do
+    c = rand(200) - 100
+    code = @rc.create_person_code(@person_id)
+    @rc.add_bonus_credits(code, c)
+    list = @rc.get_codes_with_credits
+    list.wont_be_empty
+    list.must_be_instance_of Array
+    list.length.must_equal(1)
+    (list.include? code).must_equal(true)
+  end
+
   it "should return false if it can't find a code for a given ID in the get_referral_credits_id wrapper" do
     @rc.add_bonus_credits_id(@person_id, 4).must_equal(false)
   end
@@ -159,7 +183,7 @@ describe "ReferralCodeTest" do
     c = rand(200) - 100
     code = @rc.create_person_code(@person_id)
     @rc.get_bonus_credits(code).must_equal(0)
-    @rc.add_bonus_credits_id(@person_id, c).must_equal("OK")
+    @rc.add_bonus_credits_id(@person_id, c).must_equal(true)
     @rc.get_bonus_credits(code).must_equal(c)
   end
 

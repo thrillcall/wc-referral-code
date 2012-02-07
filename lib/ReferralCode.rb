@@ -59,6 +59,7 @@ class ReferralCode
     owner_code_id = get_person_with_code(code)
     if owner_code_id != p_id
       @redis.sadd list_referral_code_key(code), p_id
+      @redis.sadd codes_with_credits_key, code
       #set_referral_code_owner_used(owner_code_id, person_id)
       return true
     end
@@ -85,6 +86,8 @@ class ReferralCode
     if first_code && second_code && first_owner && second_owner && (first_owner != second_owner)
       @redis.sadd list_referral_code_key(first_code),   second_owner
       @redis.sadd list_referral_code_key(second_code),  first_owner
+      @redis.sadd codes_with_credits_key, first_code
+      @redis.sadd codes_with_credits_key, second_code
       return true
     else
       return false
@@ -116,6 +119,8 @@ class ReferralCode
   def add_bonus_credits(code, amt = 0)
     amt = amt.to_i + get_bonus_credits(code)
     @redis.set code_bonus_key(code), amt
+    @redis.sadd codes_with_credits_key, code
+    return true
   end
 
   def add_bonus_credits_id(id, amt = 0)
@@ -148,12 +153,19 @@ class ReferralCode
   end
   ################################################################
 
-  def get_high_credit_users(min_credits = 0)
+  def get_codes_with_credits
+    @redis.smembers(codes_with_credits_key)
+  end
+
+  def get_high_credit_users(min_credits = 1)
+    if min_credits < 1
+      min_credits = 1
+    end
     list = []
 
-    all_code_keys = @redis.keys(code_person_key("*"))
+    all_code_keys = get_codes_with_credits
     all_code_keys.each do |k|
-      code = k.gsub(code_person_key(""), "")
+      code = k
       item          = {
         :code           => code,
         :tc_uid         => get_person_with_code(code),
@@ -191,6 +203,10 @@ class ReferralCode
 
   def code_bonus_key(code)
     "offers:code:bonus:#{code}"
+  end
+
+  def codes_with_credits_key
+    "offers:codes_with_credits"
   end
 
 end
